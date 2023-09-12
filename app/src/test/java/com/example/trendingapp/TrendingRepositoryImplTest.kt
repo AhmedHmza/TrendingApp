@@ -8,9 +8,9 @@ import com.example.trendingapp.dto.Answer.Success
 import com.example.trendingapp.dto.TrendingListResponse
 import com.example.trendingapp.services.TrendingServices
 import com.google.gson.Gson
-import junit.framework.Assert.assertEquals
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -20,6 +20,8 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.Mock
+import org.mockito.Mockito.*
 import org.mockito.MockitoAnnotations
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -38,6 +40,9 @@ class TrendingRepositoryImplTest {
 
     private lateinit var trendingRepository: TrendingRepository
 
+    @Mock
+    private lateinit var trendingDao: TrendingDao
+
     private val mockWebServer = MockWebServer()
     private val client = OkHttpClient.Builder()
         .connectTimeout(1, TimeUnit.SECONDS)
@@ -55,7 +60,7 @@ class TrendingRepositoryImplTest {
     @Before
     fun setup() {
         MockitoAnnotations.openMocks(this)
-        trendingRepository = TrendingRepositoryImpl(api, ioDispatcher)
+        trendingRepository = TrendingRepositoryImpl(api, ioDispatcher, trendingDao)
     }
 
     @After
@@ -64,25 +69,59 @@ class TrendingRepositoryImplTest {
     }
 
     @Test
-    fun `fetchTrendingRepos returns error`() = runBlocking {
-        mockWebServer.enqueue(MockResponse().setResponseCode(404).setBody(javaClass.classLoader?.getResource("fetch_trending_response.json")!!.readText()))
+    fun shouldReturnErrorWhenResponseFromServerFail() = runBlocking {
+        mockWebServer.enqueue(
+            MockResponse().setResponseCode(404).setBody(
+                javaClass.classLoader?.getResource("fetch_trending_response.json")!!.readText()
+            )
+        )
 
-        val result = trendingRepository.fetchTrendingRepos()
+        val result = trendingRepository.fetchTrendingRepos(true)
 
+        verify(trendingDao, times(1)).removeAll()
         assert(result is Answer.Error)
     }
 
     @Test
-    fun `fetchTrendingRepos returns success`() = runBlocking {
-        mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody(javaClass.classLoader?.getResource("fetch_trending_response.json")!!.readText()))
-        val max: TrendingListResponse = Gson().fromJson(javaClass.classLoader?.getResource("fetch_trending_response.json")!!.readText(), TrendingListResponse::class.java)
+    fun shouldSyncWithDbWhenFetchTrendingReposSuccessful(): Unit = runBlocking {
+        mockWebServer.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                javaClass.classLoader?.getResource("fetch_trending_response.json")!!.readText()
+            )
+        )
+        val trendingReposResponse: TrendingListResponse = Gson().fromJson(
+            javaClass.classLoader?.getResource("fetch_trending_response.json")!!.readText(),
+            TrendingListResponse::class.java
+        )
+        val flowTrendingList = flow { emit(trendingReposResponse.toTrendingList()) }
+        `when`(trendingDao.getAllTrending()).thenReturn(flowTrendingList)
 
-        val result = trendingRepository.fetchTrendingRepos()
+        val result = trendingRepository.fetchTrendingRepos(true)
+        val responseList = (result as Success).data
 
         assert(result is Success)
-        if(result is Success){
-            val list = max.toTrendingList()
-            assertEquals(list.size, result.data.size)
-        }
+        assert(responseList == flowTrendingList)
+        verify(trendingDao, times(1)).removeAll()
+        verify(trendingDao, times(1)).insertTrendingList(trendingReposResponse.toTrendingList())
     }
+
+    @Test
+    fun shouldFetchWhenTrendingRepoListIsEmpty(): Unit = runBlocking {
+        mockWebServer.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                javaClass.classLoader?.getResource("fetch_trending_response.json")!!.readText()
+            )
+        )
+        val trendingReposResponse: TrendingListResponse = Gson().fromJson(
+            javaClass.classLoader?.getResource("fetch_trending_response.json")!!.readText(),
+            TrendingListResponse::class.java
+        )
+        `when`(trendingDao.getAllTrending()).thenReturn(flow { emit(emptyList()) })
+
+        trendingRepository.fetchTrendingRepos(false)
+
+        verify(trendingDao, times(1)).removeAll()
+        verify(trendingDao, times(1)).insertTrendingList(trendingReposResponse.toTrendingList())
+    }
+
 }

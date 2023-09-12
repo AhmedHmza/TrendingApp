@@ -34,8 +34,20 @@ class TrendingDaoTest {
     @Test
     fun shouldInsertAndRetrieveTrendingList() = runBlocking {
         val trendingList = listOf(
-            Trending(userName = "User1", projectName = "Project1", description = "Desc1", language = "Kotlin", starCount = "100"),
-            Trending(userName = "User2", projectName = "Project2", description = "Desc2", language = "Java", starCount = "50")
+            Trending(
+                userName = "User1",
+                projectName = "Project1",
+                description = "Desc1",
+                language = "Kotlin",
+                starCount = "100"
+            ),
+            Trending(
+                userName = "User2",
+                projectName = "Project2",
+                description = "Desc2",
+                language = "Java",
+                starCount = "50"
+            )
         )
         trendingDao.insertTrendingList(trendingList)
         val retrievedList = trendingDao.getAllTrending().first()
@@ -43,14 +55,78 @@ class TrendingDaoTest {
         assertTrendingListsEqualIgnoringIds(trendingList, retrievedList)
     }
 
-    private fun assertTrendingListsEqualIgnoringIds(expected: List<Trending>, actual: List<Trending>) {
+    @Test
+    @Throws(Exception::class)
+    fun insertAndGetTrendingList() = runBlocking {
+        // Insert test data
+        val trendingList = listOf(
+            Trending(
+                userName = "User1",
+                projectName = "Project1",
+                description = "Desc1",
+                language = "Kotlin",
+                starCount = "100"
+            ),
+            Trending(
+                userName = "User2",
+                projectName = "Project2",
+                description = "Desc2",
+                language = "Java",
+                starCount = "50"
+            )
+        )
+        trendingDao.insertTrendingList(trendingList)
+
+        // Get the list from the database
+        val retrievedList = trendingDao.getTrendingList()
+
+        // Check if the retrieved list matches the inserted list
+        assert(retrievedList.size == trendingList.size)
+        assert(retrievedList.containsAll(trendingList))
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun removeAll() = runBlocking {
+        // Insert test data
+        val trendingList = listOf(
+            Trending(
+                userName = "User1",
+                projectName = "Project1",
+                description = "Desc1",
+                language = "Kotlin",
+                starCount = "100"
+            ),
+            Trending(
+                userName = "User2",
+                projectName = "Project2",
+                description = "Desc2",
+                language = "Java",
+                starCount = "50"
+            )
+        )
+        trendingDao.insertTrendingList(trendingList)
+
+        // Remove all entries
+        trendingDao.removeAll()
+
+        // Get the list from the database after removal
+        val retrievedList = trendingDao.getTrendingList()
+
+        // Check if the retrieved list is empty
+        assert(retrievedList.isEmpty())
+    }
+
+    private fun assertTrendingListsEqualIgnoringIds(
+        expected: List<Trending>,
+        actual: List<Trending>
+    ) {
         assert(expected.size == actual.size)
 
         for (i in expected.indices) {
             val expectedItem = expected[i]
             val actualItem = actual[i]
 
-            // Compare all fields except for the 'id'
             assert(expectedItem.userName == actualItem.userName)
             assert(expectedItem.projectName == actualItem.projectName)
             assert(expectedItem.description == actualItem.description)
