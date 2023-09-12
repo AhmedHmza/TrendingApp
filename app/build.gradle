@@ -105,5 +105,15 @@ dependencies {
     kaptTest 'com.google.dagger:hilt-android-compiler:2.38.1'
 
     testImplementation 'com.squareup.okhttp3:mockwebserver:4.6.0'
+    def room_version = "2.5.2"
 
+    implementation "androidx.room:room-runtime:$room_version"
+    annotationProcessor "androidx.room:room-compiler:$room_version"
+
+    // To use Kotlin annotation processing tool (kapt)
+    kapt "androidx.room:room-compiler:$room_version"
+    // To use Kotlin Symbol Processing (KSP)
+    testImplementation "androidx.room:room-testing:$room_version"
+    implementation 'androidx.room:room-ktx:2.2.1'
+    kapt "androidx.room:room-compiler:2.2.1"
 }
