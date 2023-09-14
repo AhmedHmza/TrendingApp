@@ -6,6 +6,7 @@ import com.MainCoroutineRule
 import com.example.trendingapp.dto.Answer
 import com.example.trendingapp.dto.Answer.Success
 import com.example.trendingapp.dto.TrendingListResponse
+import com.example.trendingapp.model.Trending
 import com.example.trendingapp.services.TrendingServices
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
@@ -123,5 +124,4 @@ class TrendingRepositoryImplTest {
         verify(trendingDao, times(1)).removeAll()
         verify(trendingDao, times(1)).insertTrendingList(trendingReposResponse.toTrendingList())
     }
-
 }
